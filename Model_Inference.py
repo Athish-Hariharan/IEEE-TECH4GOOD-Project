@@ -4,12 +4,13 @@ import os
 import time
 import csv
 
+last_saved_time = 0  # Global variable to track save intervals
+
 def check_model(model_path):
     """Checks if the model file exists and loads it."""
     if not os.path.exists(model_path):
         print(f"Model file '{model_path}' does not exist.")
         return None
-
     try:
         model = YOLO(model_path)  # Load the YOLO model
         print(f"Successfully loaded model from '{model_path}'")
@@ -18,18 +19,20 @@ def check_model(model_path):
         print(f"Error loading model from '{model_path}': {e}")
         return None
 
-def save_detection(frame, output_dir="detections"):
+def save_detection(frame, output_dir="detections", image_name="frame"):
     """Saves the detected frame as an image in the specified directory."""
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    filename = os.path.join(output_dir, f"detection_{timestamp}.jpg")
+    filename = os.path.join(output_dir, f"{image_name}_{timestamp}.jpg")
     cv2.imwrite(filename, frame)
-    print(f"Saved detection frame: {filename}")
+    print(f"✅ Saved detection frame: {filename}")
 
 def process_frame(model, frame, image_name="unknown", save_interval=3, log_writer=None):
     """Runs YOLO detection on a single frame and draws bounding boxes + logs performance."""
+    global last_saved_time
+
     start_time = time.time()
     results = model.predict(frame, verbose=False)  # Inference
     inference_time = time.time() - start_time
@@ -40,11 +43,11 @@ def process_frame(model, frame, image_name="unknown", save_interval=3, log_write
     for result in results:
         if hasattr(result, 'boxes'):
             for box in result.boxes:
-                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())  # Convert to int
-                conf = float(box.conf[0].item())  # Convert tensor to float
-                label = int(box.cls[0].item())  # Class ID
+                x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+                conf = float(box.conf[0].item())
+                label = int(box.cls[0].item())
                 
-                # Draw bounding box and label
+                # Draw bounding box + label
                 cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 255), 2)
                 label_text = f"Class: {label} ({conf:.2f})"
                 cv2.putText(frame, label_text, (x1, y1 - 10),
@@ -53,13 +56,18 @@ def process_frame(model, frame, image_name="unknown", save_interval=3, log_write
                 detections_info.append((label, conf))
                 detection_found = True
     
-    # Print results for this frame
+    # Print results
     print(f"\nImage: {image_name}")
     print(f"Inference time: {inference_time:.3f} sec")
     if detections_info:
         print(f"Detections ({len(detections_info)}): {detections_info}")
     else:
         print("No detections found.")
+
+    # Save detection image if found
+    if detection_found and (time.time() - last_saved_time >= save_interval):
+        save_detection(frame, image_name=image_name)
+        last_saved_time = time.time()
 
     # Log results in CSV
     if log_writer:
@@ -100,7 +108,7 @@ def process_folder(model, folder_path):
     valid_video_ext = {'.mp4', '.avi', '.mov', '.mkv', '.flv'}
 
     files = os.listdir(folder_path)
-    files.sort()  # Process in order
+    files.sort()
 
     with open("results.csv", "w", newline="") as f:
         log_writer = csv.writer(f)
@@ -114,22 +122,18 @@ def process_folder(model, folder_path):
                 print(f"\nProcessing image: {file_name}")
                 test_image(model, file_path, log_writer)
             elif ext in valid_video_ext:
-                print(f"\nSkipping video (not logging frame by frame): {file_name}")
-                # Optionally: add test_video with logging if needed
+                print(f"\nSkipping video logging (only shows detections): {file_name}")
             else:
                 print(f"Skipping unsupported file: {file_name}")
 
 if __name__ == "__main__":
-    model_path = r"model\\Combined_Best.pt"  # Change as needed
+    model_path = r"model\\Combined_Best.pt"
     model = check_model(model_path)
     
     if model:
         folder_name = input("Enter folder name containing images/videos: ").strip()
-        
-        # If user only gives a name, assume it's in the same directory as the script
         if not os.path.isabs(folder_name):
             folder_path = os.path.join(os.getcwd(), folder_name)
         else:
             folder_path = folder_name
-        
         process_folder(model, folder_path)
