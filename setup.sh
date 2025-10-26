@@ -12,7 +12,7 @@ check_sudo
 USER_NAME="tech4gd" # Hardcoded user
 PROJECT_DIR="/home/$USER_NAME/Project"
 VENV_DIRECTORY="$PROJECT_DIR/.venv"
-SERVICE_FILE="/etc/systemd/system/motion_monitor.service"
+SERVICE_FILE="/etc/systemd/system/main_pipeline.service"
 
 # to clone the scripts repo
 clone_setup(){

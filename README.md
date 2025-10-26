@@ -6,9 +6,7 @@ It clones the full scripts repo, installs the dependencies and sets up the proce
 
 ### Scripts
 
-monitor_motion.py: registers an interrupt and awaits a trigger from the PIR sensor, once triggered calls main_pipeline.py
-
-main_pipeline.py: run the camera record a live feed and forward it to the yolo model after processing. Once the model returns the text and confirmation. If the probability is greater than 50% call the lora_send.py to send the text to the lorawan gateway
+main_pipeline.py: setup the PIR sensor, load the model to memory and setup the camera then wait for a motion trigger from the PIR sensor and once a motion occurs take 5 frames in one second pass these frames to the model and get the label and the confidence score then send the data through the LoraWAN mdoule
 
 lora_send.py: sends the AT command to the Ra-08H lorawan transmitter along with the text to be send
 
@@ -24,8 +22,6 @@ lora_send.py: sends the AT command to the Ra-08H lorawan transmitter along with 
 
 ### TO DO
 
-#### * Write the lora_send.py
+#### Test and verify the setup.sh
 
-#### * Write the logic for raspberry pi camera to take burst images
-
-#### * Write the logic to call the model in main_pipeline.py
+#### Add a dialogue for the user to add the current username to the dialout group

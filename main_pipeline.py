@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 import time
 import os
+import shutil
 import threading
 import subprocess  # <-- Import subprocess
 from picamera2 import Picamera2, Preview
@@ -9,7 +10,7 @@ from ultralytics import YOLO
 # --- Configuration ---
 SENSOR_PIN = 17       # GPIO pin for the PIR sensor
 BURST_COUNT = 5     # Number of images to take on detection
-MODEL_NAME = 'yolov8n.pt' # Nano model. Smallest and fastest.
+MODEL_NAME = 'model/best.pt' # Nano model. Smallest and fastest.
 LOG_DIR = "detections" # Directory to save images with detections
 
 # --- Global Objects ---
@@ -18,7 +19,7 @@ LOG_DIR = "detections" # Directory to save images with detections
 detection_event = threading.Event()
 
 # Create the log directory if it doesn't exist
-os.makedirs(LOG_DIR, exist_ok=True)
+# os.makedirs(LOG_DIR, exist_ok=True)
 
 # --- 1. GPIO Callback Function (MUST BE FAST) ---
 def motion_detected_callback(channel):
@@ -42,8 +43,16 @@ def yolo_processor(picam2, yolo_model):
     
     while True:
         # Wait until the event is set (by the GPIO callback)
-        detection_event.wait() 
-        
+        detection_event.wait()
+
+        print("\nDeleting last Logs ...")
+        if os.path.exists(LOG_DIR):
+            shutil.rmtree(LOG_DIR)
+
+
+        print(f"\nCreating new {LOG_DIR}")
+        os.makedirs(LOG_DIR, exist_ok=True)
+
         print("Processing thread active. Capturing burst...")
         start_time = time.time()
 
@@ -188,7 +197,7 @@ try:
         SENSOR_PIN, 
         GPIO.RISING, 
         callback=motion_detected_callback, 
-        bouncetime=3000 # 3-second bouncetime to avoid constant triggers
+        bouncetime=600 # 0.6-second bouncetime to avoid constant triggers
     )
     print("GPIO interrupt configured.")
 
